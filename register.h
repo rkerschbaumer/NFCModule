@@ -1,7 +1,7 @@
 /*
  * register.h
  *
- *  Created on: 06. Jän. 2017
+ *  Created on: 06. Jï¿½n. 2017
  *      Author: Raphael
  */
 
@@ -26,5 +26,6 @@
 #define RDSD		0x0F
 
 #define SLAVE_ADDRESS 0x10 //001 0000b
+//#define SLAVE_ADDRESS 0b0010000
 
 #endif /* REGISTER_H_ */

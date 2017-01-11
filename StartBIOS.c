@@ -41,7 +41,7 @@ int main(void) {
 	uint8_t readbuf[8];
 	int i=0;
 
-	(void)Board_initGPIO();
+	//(void)Board_initGPIO();
 	(void)fm_busmode_selection();
 
 	(void)Board_initI2C();
