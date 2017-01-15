@@ -23,23 +23,40 @@
 
 /* Driverlib headers */
 #include <driverlib/gpio.h>
+#include <driverlib/pin_map.h>
+#include <driverlib/sysctl.h>
+#include <driverlib/interrupt.h>
 
 /* Board Header files */
 #include <Board.h>
 #include <EK_TM4C1294XL.h>
 
+#include "hardware.h"
+
 /* Application headers */
-#include"fm.h"
 #include"i2c_task.h"
 #include"register.h"
 
+uint8_t frq=0;
+/* Interrupt service Routine to Handle UsrSW1 Interrupt (PortJ Bit0)*/
+/*alternative to interrupt keyword: #pragma INTERRUPT (interrupt_gpioUsrSW1); */
+//interrupt void interrupt_gpio_userswitch1(void){
+//	/* Clear the GPIO interrupt*/
+//	GPIOIntClear(GPIO_PORTJ_BASE, GPIO_PIN_0);
+//	frq += 1;
+//	System_printf("fq: %d\n",frq);
+//	System_flush();
+//}
+
+/* initialize interrupt*/
+//void init_interrupt(void){
+//	GPIOIntRegister(GPIO_PORTJ_BASE, interrupt_gpio_userswitch1);
+//	GPIOIntTypeSet(GPIO_PORTJ_BASE, GPIO_PIN_0, GPIO_RISING_EDGE);
+//	GPIOIntEnable(GPIO_PORTJ_BASE, GPIO_PIN_0);
+//}
+
 int main(void) {
 	uint32_t sysclock = Board_initGeneral(120*1000*1000);
-	int32_t read=0;
-	uint8_t buf[8];
-	uint8_t len=8;
-	uint8_t readbuf[8];
-	int i=0;
 
 	//(void)Board_initGPIO();
 	(void)fm_busmode_selection();

@@ -5,9 +5,9 @@
  *      Author: Raphael
  */
 
-#ifndef FM_H_
-#define FM_H_
+#ifndef HARDWARE_H_
+#define HARDWARE_H_
 
 void fm_busmode_selection(void);
 
-#endif /* FM_H_ */
+#endif /* HARDWARE_H_ */

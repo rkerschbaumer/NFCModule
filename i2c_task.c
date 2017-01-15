@@ -30,14 +30,29 @@
 #include"register.h"
 #include"i2c_task.h"
 
+#define SET   1
+#define RESET 0
+
+#define UP   1
+#define DOWN 0
+
+I2C_Handle      handle;
+I2C_Params      i2cparams;
+I2C_Transaction i2c;
+uint8_t shadow_register[32];
+uint16_t frequency=875;
+
+void  modify_shadow_reg(uint8_t reg_addr, uint8_t reg_hi_val, uint8_t reg_lo_val, uint8_t set_reset);
+
+void read_register(void);
+void write_register(uint8_t reg_addr);
+
+//void fm_tune(uint8_t frequency, uint8_t direction);
+void fm_tune(uint8_t direction);
+
 void i2c_task_fct(UArg arg0, UArg arg1) {
-	I2C_Handle      handle;
-	I2C_Params      i2cparams;
-	I2C_Transaction i2c;
 
-	uint8_t writebuffer[4]; //, readbuffer[4];
-	uint8_t shadow_register[44];
-
+	//init_interrupt();
 	I2C_Params_init(&i2cparams);
 	i2cparams.bitRate = I2C_400kHz;/*in case this is too fast use I2C_400kHz*/
 	i2cparams.transferMode = I2C_MODE_BLOCKING;/*important if you call I2C_transfer in Task context*/
@@ -46,159 +61,126 @@ void i2c_task_fct(UArg arg0, UArg arg1) {
 		System_abort("I2C was not opened");
 	}
 
-
 	//ENABLE = 1 and DISABLE = 0 puts the device in powerup mode
 	i2c.slaveAddress = SLAVE_ADDRESS;
 
-	//memset(readbuffer,0,4);
-	//memset(writebuffer,0,4);
+	memset(shadow_register,0,32);
 
-	memset(shadow_register,0,44);
+	read_register();
 
-
-	//i2c.readBuf = (uint8_t*)&readbuffer[0];
-	i2c.readBuf = shadow_register;
-	i2c.writeBuf = writebuffer;
-
-	i2c.writeCount = 1;
-		i2c.readCount = 2;
-		writebuffer[0] = 0x0A;
-
-		if (!I2C_transfer(handle, &i2c)) {
-			System_abort("Bad I2C read transfer!");
-		}
-
-		i2c.readBuf = shadow_register;
-				//each register has 2 bytes and there are 16 registers so 2*16 = 0x20
-				i2c.readCount = 0x20;
-				//i2c.readCount = 1;
-				i2c.writeCount = 0;
-				i2c.writeBuf = NULL;
-				if(!I2C_transfer(handle, &i2c)) {
-					System_printf("error");
-				}
-
-
-
-	writebuffer[0] = POWERCFG;/*address of register to write*/
-	writebuffer[1] = 0x00;
-	writebuffer[2] = 0x00;/*data to be written to that address*/
-
-	shadow_register[16]=0x00;
-	shadow_register[17]=0x00;
-
-	i2c.writeBuf = shadow_register;
-
-	i2c.writeCount = 3;
-	i2c.readCount = 0;
-
-	if (!I2C_transfer(handle, &i2c)) {
-		System_abort("Bad I2C transfer!");
-	}
-
+	/*XOSCTEN set*/
+	modify_shadow_reg(TEST1, 0x81, 0x00, SET);
+	write_register(TEST1);
 	Task_sleep(100);
 
-	/* Read test */
 
-	i2c.readBuf = shadow_register;
-				//each register has 2 bytes and there are 16 registers so 2*16 = 0x20
-				i2c.readCount = 0x20;
-				//i2c.readCount = 1;
-				i2c.writeCount = 0;
-				i2c.writeBuf = NULL;
-				if(!I2C_transfer(handle, &i2c)) {
-					System_printf("error");
-				}
+	/*powerup condition*/
+	modify_shadow_reg(POWERCFG, 0xC0, 0x01, SET);
+	write_register(POWERCFG);
+	Task_sleep(100);
 
-	int x=0;
+	/* pump up the volume, oida*/
+	modify_shadow_reg(SYSCONFIG2, 0x00, 0x1F, SET);
+	write_register(SYSCONFIG2);
+	Task_sleep(100);
 
-	for(x=0;x<3;x++);
+	read_register();
+	Task_sleep(100);
 
-//	writebuffer[0] = SYSCONFIG2;/*data to be written to that address*/
-//	i2c.writeCount = 1;
-//	if (!I2C_transfer(handle, &i2c)) {
-//		System_abort("Bad I2C transfer!");
-//	}
-//	Task_sleep(100);
-//	writebuffer[0] = 0x10;/*data to be written to that address*/
-//	writebuffer[1] = 0x15;
-//	System_printf("writebuffer[0]: %d %x\nwritebuffer[1]: %d %x\n",writebuffer[0],writebuffer[0], writebuffer[1], writebuffer[1]);
-//	System_flush();
-//	i2c.writeCount = 2;
-//
-//
-//	if (!I2C_transfer(handle, &i2c)) {
-//		System_abort("Bad I2C transfer!");
-//	}
-//
-//
-//	Task_sleep(100);
-//	writebuffer[0] = TEST1;/*data to be written to that address*/
-//	i2c.writeCount = 1;
-//	if (!I2C_transfer(handle, &i2c)) {
-//		System_abort("Bad I2C transfer!");
-//	}
-//
-//	Task_sleep(100);
-//	writebuffer[0] = 0x81;/*data to be written to that address*/
-//	writebuffer[1] = 0x00;
-//	System_printf("writebuffer[0]: %d %x\nwritebuffer[1]: %d %x\n",writebuffer[0],writebuffer[0], writebuffer[1], writebuffer[1]);
-//	System_flush();
-//	i2c.writeCount = 2;
-//
-//	if (!I2C_transfer(handle, &i2c)) {
-//		System_abort("Bad I2C transfer!");
-//	}
-//	Task_sleep(100);
-//	writebuffer[0] = POWERCFG;/*address of register to write*/
-//		i2c.writeCount = 1;
-//		if (!I2C_transfer(handle, &i2c)) {
-//			System_abort("Bad I2C transfer!");
-//		}
-//
-//		Task_sleep(100);
-//		writebuffer[0] = 0x41;/*data to be written to that address*/
-//		writebuffer[1] = 0x01;
-//		System_printf("writebuffer[0]: %d %x\nwritebuffer[1]: %d %x\n",writebuffer[0],writebuffer[0], writebuffer[1], writebuffer[1]);
-//		System_flush();
-//		i2c.writeCount = 2;
-//		if (!I2C_transfer(handle, &i2c)) {
-//			System_abort("Bad I2C transfer!");
-//		}
-//
+	/*start Tuning to 88,6*/
+	modify_shadow_reg(CHANNEL, 0x80, 0x0B, SET);
+	write_register(CHANNEL);
+	Task_sleep(100); //GP2 Interrupt could be used, could be used for STC & RDS
 
-	//uint16_t value;
+	read_register();
+
+	/*stop Tuning */
+	modify_shadow_reg(CHANNEL, 0x80, 0x00, RESET);
+	write_register(CHANNEL);
+	Task_sleep(100);
+
+	read_register();
+
+	while(true){
+		if(!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_0)){
+			fm_tune(UP);
+			Task_sleep(100);
+		}
+		if(!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_1)){
+			fm_tune(DOWN);
+			Task_sleep(100);
+		}
+	}
 
 	/*
 	 * idee f�r while loop:
 	 * events posten f�r seek mode, volume, etc. (realisierung mit LED-ansteuern)
 	 * */
+}
 
-	/*while (true) {
-		value = 0;
-	    i2c.writeCount = 1;
-	    i2c.readCount = 1;
-	    writebuffer[0] =  READLO;address to be read
+void modify_shadow_reg(uint8_t reg_addr, uint8_t reg_hi_val, uint8_t reg_lo_val, uint8_t set_reset){
+	uint8_t shreg_addr;
+	i2c.writeBuf = &shadow_register[16];
+	shreg_addr = 12 + (2*reg_addr); //12 - Startvalue of reg 0x00 in shadow register
 
-	    if (!I2C_transfer(handle, &i2c)) {
-			GPIO_write(Board_LED1, Board_LED_ON);
-			System_abort("Bad I2C transfer!");
-	    }
+	if(set_reset == SET){
+		shadow_register[shreg_addr]   |= reg_hi_val;
+		shadow_register[++shreg_addr] |= reg_lo_val;
+	}
+	else if(set_reset == RESET){
+		shadow_register[shreg_addr]   &= ~reg_hi_val;
+		shadow_register[++shreg_addr] &= ~reg_lo_val;
+	}
+}
 
-	    value =  readbuffer[0];read back value
-	    i2c.writeCount = 1;
-	    i2c.readCount = 1;
-	    writebuffer[0] =  READHI;
+void write_register(uint8_t reg_addr){
+	i2c.writeCount = (reg_addr - 1)*2;
+	i2c.readCount = 0;
 
-	    if (!I2C_transfer(handle, &i2c)) {
-	    	GPIO_write(Board_LED1, Board_LED_ON);
-	    	System_abort("Bad I2C transfer!");
-	    }
-	    value +=  (readbuffer[0] << 8);
-	    System_printf("value %u\n",value);
-	    System_flush();
-	    Task_sleep(1000);
-	} */
+	if (!I2C_transfer(handle, &i2c)) {
+		System_abort("Bad I2C transfer!");
+	}
+}
+
+void read_register(void){
+	i2c.readBuf = shadow_register;
+	//each register has 2 bytes and there are 16 registers so 2*16 = 0x20
+	i2c.readCount = 0x20;
+	i2c.writeCount = 0;
+	i2c.writeBuf = NULL;
+	if(!I2C_transfer(handle, &i2c)) {
+		System_printf("error");
+	}
+}
+
+void fm_tune(uint8_t direction){
+	uint8_t channel;
+
+	if(direction==UP){
+		frequency++;
+	}
+
+	if(direction==DOWN){
+		frequency--;
+	}
+
+//	if (frequency < 875 || frequency > 1080){
+//		/* in Hex between 0x00 for 87,5 MHz and 0xCD for 108 MHz*/
+//		frequency = 875;
+//	}
+
+	channel = frequency - 875;
+	modify_shadow_reg(CHANNEL,0x80,0xFF, RESET);
+	modify_shadow_reg(CHANNEL,0x80,(uint8_t)channel, SET);
+	write_register(CHANNEL);
+	Task_sleep(100);
+
+	modify_shadow_reg(CHANNEL,0x80, 0x00, RESET);
+	write_register(CHANNEL);
+	Task_sleep(100);
+	System_printf("Channel: %d, Frequency: %d\n",channel,frequency);
+	System_flush();
+	read_register();
 }
 
 int setup_i2c_task(int prio, xdc_String name){
@@ -213,8 +195,9 @@ int setup_i2c_task(int prio, xdc_String name){
 	task_params.priority = prio;
 	//task_params.arg0/1 ??
 
-	if(task_hendl = Task_create((Task_FuncPtr)i2c_task_fct, &task_params, &eb) == NULL){
+	if((task_hendl = Task_create((Task_FuncPtr)i2c_task_fct, &task_params, &eb)) == NULL){
 		System_abort("Task_create i2c_task failed");
 	}
 	return 0;
 }
+
