@@ -36,11 +36,14 @@
 #define UP   1
 #define DOWN 0
 
+#define HIGHER_END_FREQUENCY 1080
+#define LOWER_END_FREQUENCY 875
+
 I2C_Handle      handle;
 I2C_Params      i2cparams;
 I2C_Transaction i2c;
 uint8_t shadow_register[32];
-uint16_t frequency=875;
+uint16_t frequency=LOWER_END_FREQUENCY;
 
 void  modify_shadow_reg(uint8_t reg_addr, uint8_t reg_hi_val, uint8_t reg_lo_val, uint8_t set_reset);
 
@@ -48,7 +51,9 @@ void read_register(void);
 void write_register(uint8_t reg_addr);
 
 //void fm_tune(uint8_t frequency, uint8_t direction);
-void fm_tune(uint8_t direction);
+void frequency_change(uint8_t direction);
+void fm_tune(void);
+void fm_seek(uint8_t direction);
 
 void i2c_task_fct(UArg arg0, UArg arg1) {
 
@@ -79,38 +84,61 @@ void i2c_task_fct(UArg arg0, UArg arg1) {
 	write_register(POWERCFG);
 	Task_sleep(100);
 
-	/* pump up the volume, oida*/
-	modify_shadow_reg(SYSCONFIG2, 0x00, 0x1F, SET);
+	/* pump up the volume, oida = low-byte 0x1F
+	 * SEEKTH = high-byte, value between 0x00 and 0x7F, channels below RSSI Threshold will not be validated, 0x16 is a !TESTVALUE! according to AN230 */
+	modify_shadow_reg(SYSCONFIG2, 0x1F, 0x1F, SET);
 	write_register(SYSCONFIG2);
 	Task_sleep(100);
 
 	read_register();
 	Task_sleep(100);
 
-	/*start Tuning to 88,6*/
-	modify_shadow_reg(CHANNEL, 0x80, 0x0B, SET);
-	write_register(CHANNEL);
-	Task_sleep(100); //GP2 Interrupt could be used, could be used for STC & RDS
+	/* setting SKSNR (SNR Threshold) and SKCNT (FM Impulse Detection Threshold), as recommended */
+	modify_shadow_reg(SYSCONFIG3, 0x00, 0x48, SET);
+	write_register(SYSCONFIG3);
+	Task_sleep(100);
 
 	read_register();
-
-	/*stop Tuning */
-	modify_shadow_reg(CHANNEL, 0x80, 0x00, RESET);
-	write_register(CHANNEL);
 	Task_sleep(100);
+
+	fm_tune();
+
+//	/*start Tuning to 87,5*/
+//	modify_shadow_reg(CHANNEL, 0x80, 0x00, SET);
+//	write_register(CHANNEL);
+//	Task_sleep(100); //GP2 Interrupt could be used, could be used for STC & RDS
+//
+//	read_register();
+//
+//	/*stop Tuning */
+//	modify_shadow_reg(CHANNEL, 0x80, 0x00, RESET);
+//	write_register(CHANNEL);
+//	Task_sleep(100);
 
 	read_register();
 
 	while(true){
 		if(!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_0)){
-			fm_tune(UP);
-			Task_sleep(100);
+			/* FIXME: implement support of both, seek & tune, properly*/
+		//	Task_sleep(300);
+		//	if(!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_0)){
+				fm_seek(UP);
+				Task_sleep(100);
+		//	}
+		//	frequency_change(UP);
+		//	fm_tune();
 		}
 		if(!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_1)){
-			fm_tune(DOWN);
-			Task_sleep(100);
+		//	Task_sleep(300);
+		//	if(!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_1)){
+				fm_seek(DOWN);
+				Task_sleep(100);
+		//	}
+		//	frequency_change(DOWN);
+		//	fm_tune();
 		}
 	}
+
 
 	/*
 	 * idee f�r while loop:
@@ -153,25 +181,61 @@ void read_register(void){
 	}
 }
 
-void fm_tune(uint8_t direction){
-	uint8_t channel;
+void fm_seek(uint8_t direction){
+	uint8_t dir;
+	if(direction == UP){
+		modify_shadow_reg(POWERCFG, 0x03, 0x00, SET);
+	}
+	if(direction == DOWN){
+		modify_shadow_reg(POWERCFG, 0x02, 0x00, RESET);
+		modify_shadow_reg(POWERCFG, 0x01, 0x00, SET);
+	}
 
-	if(direction==UP){
+	write_register(POWERCFG);
+	Task_sleep(100);
+
+	do{
+		read_register();
+		/*FIXME  bis doher gehts, dann switcht er wieder auf an anderen channel oasch wenn if unten einkommentiert */
+		/* SF/BL bit set is bad :( */
+//		if((shadow_register[1] && 0x01) == 1 ){
+//			System_printf("no matching Frequency found\n");
+//			break;
+//		}
+		Task_sleep(50);
+
+	}while((shadow_register[1] && 0x40) != 1 ); //while STC bit (seek/tune) is not set
+
+	modify_shadow_reg(POWERCFG, 0x01, 0x00, RESET);
+	write_register(POWERCFG);
+
+	frequency = (shadow_register[3] & 0xFF) + LOWER_END_FREQUENCY;
+	fm_tune();
+
+}
+
+void frequency_change(uint8_t direction){
+	if(direction == UP){
 		frequency++;
 	}
-
-	if(direction==DOWN){
+	if(direction == DOWN){
 		frequency--;
 	}
+	/* in Hex between 0x00 for 87,5 MHz and 0xCD for 108 MHz*/
+	if (frequency > HIGHER_END_FREQUENCY){
+		frequency = LOWER_END_FREQUENCY;
+	}
+	if (frequency < LOWER_END_FREQUENCY){
+		frequency = HIGHER_END_FREQUENCY;
+	}
+}
 
-//	if (frequency < 875 || frequency > 1080){
-//		/* in Hex between 0x00 for 87,5 MHz and 0xCD for 108 MHz*/
-//		frequency = 875;
-//	}
+void fm_tune(){
+	uint8_t channel;
 
-	channel = frequency - 875;
+	channel = frequency - LOWER_END_FREQUENCY;
 	modify_shadow_reg(CHANNEL,0x80,0xFF, RESET);
-	modify_shadow_reg(CHANNEL,0x80,(uint8_t)channel, SET);
+	modify_shadow_reg(CHANNEL,0x80, channel, SET);
 	write_register(CHANNEL);
 	Task_sleep(100);
 
