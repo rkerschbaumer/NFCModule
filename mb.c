@@ -36,17 +36,25 @@
 
 #include"mb.h"
 
-int pend_mb(){
+Mailbox_Params mboxParams;
+Mailbox_Handle mailbox_hendl = NULL;
 
+int pend_mb(uint16_t* output){
+    Mailbox_pend(mailbox_hendl, output, BIOS_WAIT_FOREVER);
+	System_printf("inpend_frq: %d\n", *output);
+	return 0;
 }
 
-int post_mb(){
-
+int post_mb(uint16_t* freq){
+	int x;
+	Mailbox_post(mailbox_hendl, freq, BIOS_WAIT_FOREVER);
+	x = Mailbox_getNumPendingMsgs(mailbox_hendl);
+	System_printf("inpost_frq: %d - pend_msg: %d\n", *freq, x);
+	return 0;
 }
 
 int setup_mb(){
-	Mailbox_Params mboxParams;
-	Mailbox_Handle mailbox_hendl = NULL;
+
 	Error_Block eb;
 
 	Error_init(&eb);

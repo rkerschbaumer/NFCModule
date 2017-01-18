@@ -30,6 +30,7 @@
 
 #include"register.h"
 #include"i2c_task.h"
+#include"mb.h"
 
 #define SET   1
 #define RESET 0
@@ -236,8 +237,11 @@ void fm_tune(){
 	modify_shadow_reg(CHANNEL,0x80, 0x00, RESET);
 	write_register(CHANNEL);
 	Task_sleep(100);
-	System_printf("Channel: %d, Frequency: %d\n",channel,frequency);
-	System_flush();
+	//System_printf("Channel: %d, Frequency: %d\n",channel,frequency);
+	//System_flush();
+
+	post_mb(&frequency);
+
 	read_register();
 }
 
@@ -252,8 +256,8 @@ int setup_i2c_task(int prio, xdc_String name){
 	task_params.stackSize = 1024;
 	task_params.priority = prio;
 	//task_params.arg0/1 ??
-
-	if((task_hendl = Task_create((Task_FuncPtr)i2c_task_fct, &task_params, &eb)) == NULL){
+	task_hendl = Task_create((Task_FuncPtr)i2c_task_fct, &task_params, &eb);
+	if(task_hendl == NULL){
 		System_abort("Task_create i2c_task failed");
 	}
 	return 0;

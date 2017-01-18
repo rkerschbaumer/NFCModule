@@ -48,6 +48,7 @@ int main(void) {
 
 	Board_initI2C();
 
+	setup_test_task();
 	setup_i2c_task(15, "I2C Task");
 
 	BIOS_start();

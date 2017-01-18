@@ -8,8 +8,11 @@
 #ifndef MB_H_
 #define MB_H_
 
+#include <stdbool.h>
+#include <stdint.h>
+
 int setup_mb(void);
-int pend_mb(void);
-int post_mb(void);
+int pend_mb(uint16_t* output);
+int post_mb(uint16_t* frequency);
 
 #endif /* MB_H_ */

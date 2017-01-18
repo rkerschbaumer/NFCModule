@@ -15,7 +15,7 @@
 void i2c_task_fct(UArg arg0, UArg arg1);
 int setup_i2c_task(int prio, xdc_String name);
 
-void  modify_shadow_reg(uint8_t reg_addr, uint8_t reg_hi_val, uint8_t reg_lo_val, uint8_t set_reset);
+void modify_shadow_reg(uint8_t reg_addr, uint8_t reg_hi_val, uint8_t reg_lo_val, uint8_t set_reset);
 
 void read_register(void);
 void write_register(uint8_t reg_addr);
