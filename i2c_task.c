@@ -16,6 +16,7 @@
 /* BIOS Header files */
 #include <ti/sysbios/BIOS.h>
 #include <ti/sysbios/knl/Task.h>
+#include <ti/sysbios/knl/Mailbox.h>
 
 /* Driverlib headers */
 #include<driverlib/gpio.h>
@@ -45,15 +46,6 @@ I2C_Transaction i2c;
 uint8_t shadow_register[32];
 uint16_t frequency=LOWER_END_FREQUENCY;
 
-void  modify_shadow_reg(uint8_t reg_addr, uint8_t reg_hi_val, uint8_t reg_lo_val, uint8_t set_reset);
-
-void read_register(void);
-void write_register(uint8_t reg_addr);
-
-//void fm_tune(uint8_t frequency, uint8_t direction);
-void frequency_change(uint8_t direction);
-void fm_tune(void);
-void fm_seek(uint8_t direction);
 
 void i2c_task_fct(UArg arg0, UArg arg1) {
 
@@ -84,17 +76,17 @@ void i2c_task_fct(UArg arg0, UArg arg1) {
 	write_register(POWERCFG);
 	Task_sleep(100);
 
-	/* pump up the volume, oida = low-byte 0x1F
-	 * SEEKTH = high-byte, value between 0x00 and 0x7F, channels below RSSI Threshold will not be validated, 0x16 is a !TESTVALUE! according to AN230 */
-	modify_shadow_reg(SYSCONFIG2, 0x1F, 0x1F, SET);
+	/* pump up the volume, oida = low-nibble-low-byte 0xF, Spacing = high-nibble-low-byte 0x1
+	 * SEEKTH = high-byte, value between 0x00 and 0x7F, channels below RSSI Threshold will not be validated, 0x2F is a !TESTVALUE! according to AN230 */
+	modify_shadow_reg(SYSCONFIG2, 0x1C, 0x1F, SET);
 	write_register(SYSCONFIG2);
 	Task_sleep(100);
 
 	read_register();
 	Task_sleep(100);
 
-	/* setting SKSNR (SNR Threshold) and SKCNT (FM Impulse Detection Threshold), as recommended */
-	modify_shadow_reg(SYSCONFIG3, 0x00, 0x48, SET);
+	/* setting SKSNR (SNR Threshold) and SKCNT (FM Impulse Detection Threshold, recommended is 0x48*/
+	modify_shadow_reg(SYSCONFIG3, 0x00, 0x7F, SET);
 	write_register(SYSCONFIG3);
 	Task_sleep(100);
 
@@ -120,22 +112,24 @@ void i2c_task_fct(UArg arg0, UArg arg1) {
 	while(true){
 		if(!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_0)){
 			/* FIXME: implement support of both, seek & tune, properly*/
-		//	Task_sleep(300);
-		//	if(!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_0)){
+			Task_sleep(500);
+			if(!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_0)){
 				fm_seek(UP);
-				Task_sleep(100);
-		//	}
-		//	frequency_change(UP);
-		//	fm_tune();
+			}
+			else{
+				frequency_change(UP);
+				fm_tune();
+			}
 		}
 		if(!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_1)){
-		//	Task_sleep(300);
-		//	if(!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_1)){
+			Task_sleep(500);
+			if(!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_1)){
 				fm_seek(DOWN);
-				Task_sleep(100);
-		//	}
-		//	frequency_change(DOWN);
-		//	fm_tune();
+			}
+			else{
+				frequency_change(DOWN);
+				fm_tune();
+			}
 		}
 	}
 
@@ -166,7 +160,7 @@ void write_register(uint8_t reg_addr){
 	i2c.readCount = 0;
 
 	if (!I2C_transfer(handle, &i2c)) {
-		System_abort("Bad I2C transfer!");
+		System_abort("Bad I2C write-transfer!");
 	}
 }
 
@@ -177,7 +171,7 @@ void read_register(void){
 	i2c.writeCount = 0;
 	i2c.writeBuf = NULL;
 	if(!I2C_transfer(handle, &i2c)) {
-		System_printf("error");
+		System_abort("Bad I2C read-transfer!");
 	}
 }
 
@@ -196,22 +190,22 @@ void fm_seek(uint8_t direction){
 
 	do{
 		read_register();
-		/*FIXME  bis doher gehts, dann switcht er wieder auf an anderen channel oasch wenn if unten einkommentiert */
+		/*FIXME  bis doher gehts, dann switcht er wieder auf an anderen channel oasch wenn if unten einkommentiert -> sollte ja eigentlich das komplette Spektrum von 87,5 bis 108 abdecken, hmmm... */
 		/* SF/BL bit set is bad :( */
-//		if((shadow_register[1] && 0x01) == 1 ){
+//		if((shadow_register[0] && 0x20) == 1 ){
 //			System_printf("no matching Frequency found\n");
 //			break;
 //		}
-		Task_sleep(50);
-
-	}while((shadow_register[1] && 0x40) != 1 ); //while STC bit (seek/tune) is not set
+		//Task_sleep(50);
+	}while((shadow_register[0] && 0x40) != 1 ); //while STC bit (seek/tune) is not set
 
 	modify_shadow_reg(POWERCFG, 0x01, 0x00, RESET);
 	write_register(POWERCFG);
 
-	frequency = (shadow_register[3] & 0xFF) + LOWER_END_FREQUENCY;
-	fm_tune();
+	Task_sleep(100);
 
+	frequency = (shadow_register[3]) + LOWER_END_FREQUENCY;
+	fm_tune();
 }
 
 void frequency_change(uint8_t direction){
