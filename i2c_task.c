@@ -31,6 +31,18 @@
 #include"register.h"
 #include"i2c_task.h"
 #include"mb.h"
+#include"leds.h"
+
+/* Operating Modes*/
+#define TUNE_UP 0
+#define TUNE_DOWN 1
+#define SEEK_UP 2
+#define SEEK_DOWN 3
+
+#define VOLUME_UP 4
+#define VOLUME_DOWN 5
+
+
 
 #define SET   1
 #define RESET 0
@@ -47,9 +59,12 @@ I2C_Transaction i2c;
 uint8_t shadow_register[32];
 uint16_t frequency=LOWER_END_FREQUENCY;
 
+/* functionpointer*/
+void (*led_on[4])() = {led_d1_on, led_d2_on, led_d3_on, led_d4_on};
+void (*led_off[4])() = {led_d1_off, led_d2_off, led_d3_off, led_d4_off};
 
 void i2c_task_fct(UArg arg0, UArg arg1) {
-
+	uint8_t operating_mode = TUNE_UP;
 	//init_interrupt();
 	I2C_Params_init(&i2cparams);
 	i2cparams.bitRate = I2C_400kHz;/*in case this is too fast use I2C_400kHz*/
@@ -112,26 +127,67 @@ void i2c_task_fct(UArg arg0, UArg arg1) {
 
 	while(true){
 		if(!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_0)){
-			/* FIXME: implement support of both, seek & tune, properly*/
-			Task_sleep(500);
-			if(!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_0)){
-				fm_seek(UP);
+			operating_mode++;
+			if(operating_mode > SEEK_DOWN){
+				operating_mode = TUNE_UP;
 			}
-			else{
-				frequency_change(UP);
-				fm_tune();
-			}
+			Task_sleep(100);
 		}
-		if(!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_1)){
-			Task_sleep(500);
-			if(!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_1)){
-				fm_seek(DOWN);
-			}
-			else{
-				frequency_change(DOWN);
-				fm_tune();
-			}
+
+		if(operating_mode == TUNE_UP && (!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_1))){
+			led_on[0]();
+			led_off[1]();
+			led_off[2]();
+			led_off[3]();
+			frequency_change(UP);
+			fm_tune();
 		}
+
+		if(operating_mode == TUNE_DOWN && (!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_1))){
+			led_off[0]();
+			led_on[1]();
+			led_off[2]();
+			led_off[3]();
+			frequency_change(DOWN);
+			fm_tune();
+		}
+
+		if(operating_mode == SEEK_UP && (!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_1))){
+			led_off[0]();
+			led_off[1]();
+			led_on[2]();
+			led_off[3]();
+			fm_seek(UP);
+		}
+
+		if(operating_mode == SEEK_DOWN && (!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_1))){
+			led_off[0]();
+			led_off[1]();
+			led_off[2]();
+			led_on[3]();
+			fm_seek(DOWN);
+		}
+//		if(!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_0)){
+//			/* FIXME: implement support of both, seek & tune, properly*/
+//			Task_sleep(500);
+//			if(!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_0)){
+//				fm_seek(UP);
+//			}
+//			else{
+//				frequency_change(UP);
+//				fm_tune();
+//			}
+//		}
+//		if(!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_1)){
+//			Task_sleep(500);
+//			if(!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_1)){
+//				fm_seek(DOWN);
+//			}
+//			else{
+//				frequency_change(DOWN);
+//				fm_tune();
+//			}
+//		}
 	}
 
 
@@ -237,8 +293,6 @@ void fm_tune(){
 	modify_shadow_reg(CHANNEL,0x80, 0x00, RESET);
 	write_register(CHANNEL);
 	Task_sleep(100);
-	//System_printf("Channel: %d, Frequency: %d\n",channel,frequency);
-	//System_flush();
 
 	post_mb(&frequency);
 

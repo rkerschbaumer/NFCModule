@@ -31,13 +31,20 @@
 /* Application headers */
 #include "mb.h"
 
+void make_frequency_great_again(uint16_t input, uint16_t* precomma, uint8_t* postcomma){
+    *precomma = input/10;
+    *postcomma = input%10;
+}
+
 void test_function(UArg arg0, UArg arg1){
 
-	uint16_t outfreq;
-
+	uint16_t outfreq=0, precomma;
+	uint8_t postcomma;
 	while(1){
 		pend_mb(&outfreq);
-		System_printf("outfreq: %d\n", outfreq);
+		System_printf("frq: %d\n",outfreq);
+		//	make_frequency_great_again(outfreq, &precomma, &postcomma);
+		//System_printf("Frequency: %d,%d\n", precomma, postcomma);
 		System_flush();
 	}
 }
