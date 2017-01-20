@@ -59,13 +59,14 @@ I2C_Transaction i2c;
 uint8_t shadow_register[32];
 uint16_t frequency=LOWER_END_FREQUENCY;
 
-/* functionpointer*/
+/* LED-functionpointer */
 void (*led_on[4])() = {led_d1_on, led_d2_on, led_d3_on, led_d4_on};
 void (*led_off[4])() = {led_d1_off, led_d2_off, led_d3_off, led_d4_off};
 
 void i2c_task_fct(UArg arg0, UArg arg1) {
 	uint8_t operating_mode = TUNE_UP;
-	//init_interrupt();
+	uint8_t i;
+
 	I2C_Params_init(&i2cparams);
 	i2cparams.bitRate = I2C_400kHz;/*in case this is too fast use I2C_400kHz*/
 	i2cparams.transferMode = I2C_MODE_BLOCKING;/*important if you call I2C_transfer in Task context*/
@@ -74,56 +75,48 @@ void i2c_task_fct(UArg arg0, UArg arg1) {
 		System_abort("I2C was not opened");
 	}
 
-	//ENABLE = 1 and DISABLE = 0 puts the device in powerup mode
 	i2c.slaveAddress = SLAVE_ADDRESS;
 
 	memset(shadow_register,0,32);
 
 	read_register();
 
+	for(i=0; i<9; i++){
+		modify_shadow_reg(i,0xFF, 0xFF, RESET);
+	}
+
 	/*XOSCTEN set*/
 	modify_shadow_reg(TEST1, 0x81, 0x00, SET);
 	write_register(TEST1);
-	Task_sleep(100);
-
+	Task_sleep(10);
 
 	/*powerup condition*/
 	modify_shadow_reg(POWERCFG, 0xC0, 0x01, SET);
 	write_register(POWERCFG);
-	Task_sleep(100);
+	Task_sleep(10);
 
-	/* pump up the volume, oida = low-nibble-low-byte 0xF, Spacing = high-nibble-low-byte 0x1
+	/* pump up the volume = low-byte-low-nibble 0xF, Spacing = low-byte-high-nibble 0x1
 	 * SEEKTH = high-byte, value between 0x00 and 0x7F, channels below RSSI Threshold will not be validated, 0x2F is a !TESTVALUE! according to AN230 */
 	modify_shadow_reg(SYSCONFIG2, 0x1C, 0x1F, SET);
 	write_register(SYSCONFIG2);
-	Task_sleep(100);
-
-	read_register();
-	Task_sleep(100);
+	Task_sleep(10);
 
 	/* setting SKSNR (SNR Threshold) and SKCNT (FM Impulse Detection Threshold, recommended is 0x48*/
 	modify_shadow_reg(SYSCONFIG3, 0x00, 0x7F, SET);
 	write_register(SYSCONFIG3);
-	Task_sleep(100);
-
-	read_register();
-	Task_sleep(100);
+	Task_sleep(10);
 
 	fm_tune();
 
-//	/*start Tuning to 87,5*/
-//	modify_shadow_reg(CHANNEL, 0x80, 0x00, SET);
-//	write_register(CHANNEL);
-//	Task_sleep(100); //GP2 Interrupt could be used, could be used for STC & RDS
-//
-//	read_register();
-//
-//	/*stop Tuning */
-//	modify_shadow_reg(CHANNEL, 0x80, 0x00, RESET);
-//	write_register(CHANNEL);
-//	Task_sleep(100);
+	led_on[0]();
 
 	read_register();
+
+	/* RDS TESTCONFIG setting RDSM to verbose */
+	modify_shadow_reg(POWERCFG, 0x08, 0x00, SET);
+	write_register(POWERCFG);
+	Task_sleep(10);
+
 
 	while(true){
 		if(!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_0)){
@@ -131,9 +124,33 @@ void i2c_task_fct(UArg arg0, UArg arg1) {
 			if(operating_mode > SEEK_DOWN){
 				operating_mode = TUNE_UP;
 			}
-			Task_sleep(100);
+			if(operating_mode == TUNE_UP){
+				led_on[0]();
+				led_off[1]();
+				led_off[2]();
+				led_off[3]();
+			}
+			else if(operating_mode == TUNE_DOWN){
+				led_off[0]();
+				led_on[1]();
+				led_off[2]();
+				led_off[3]();
+			}
+			else if(operating_mode == SEEK_UP){
+				led_off[0]();
+				led_off[1]();
+				led_on[2]();
+				led_off[3]();
+			}
+			else if(operating_mode == SEEK_DOWN){
+				led_off[0]();
+				led_off[1]();
+				led_off[2]();
+				led_on[3]();
+			}
+			Task_sleep(150);
 		}
-
+		read_register();
 		if(operating_mode == TUNE_UP && (!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_1))){
 			led_on[0]();
 			led_off[1]();
@@ -142,8 +159,7 @@ void i2c_task_fct(UArg arg0, UArg arg1) {
 			frequency_change(UP);
 			fm_tune();
 		}
-
-		if(operating_mode == TUNE_DOWN && (!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_1))){
+		else if(operating_mode == TUNE_DOWN && (!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_1))){
 			led_off[0]();
 			led_on[1]();
 			led_off[2]();
@@ -151,50 +167,21 @@ void i2c_task_fct(UArg arg0, UArg arg1) {
 			frequency_change(DOWN);
 			fm_tune();
 		}
-
-		if(operating_mode == SEEK_UP && (!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_1))){
+		else if(operating_mode == SEEK_UP && (!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_1))){
 			led_off[0]();
 			led_off[1]();
 			led_on[2]();
 			led_off[3]();
 			fm_seek(UP);
 		}
-
-		if(operating_mode == SEEK_DOWN && (!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_1))){
+		else if(operating_mode == SEEK_DOWN && (!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_1))){
 			led_off[0]();
 			led_off[1]();
 			led_off[2]();
 			led_on[3]();
 			fm_seek(DOWN);
 		}
-//		if(!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_0)){
-//			/* FIXME: implement support of both, seek & tune, properly*/
-//			Task_sleep(500);
-//			if(!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_0)){
-//				fm_seek(UP);
-//			}
-//			else{
-//				frequency_change(UP);
-//				fm_tune();
-//			}
-//		}
-//		if(!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_1)){
-//			Task_sleep(500);
-//			if(!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_1)){
-//				fm_seek(DOWN);
-//			}
-//			else{
-//				frequency_change(DOWN);
-//				fm_tune();
-//			}
-//		}
 	}
-
-
-	/*
-	 * idee f�r while loop:
-	 * events posten f�r seek mode, volume, etc. (realisierung mit LED-ansteuern)
-	 * */
 }
 
 void modify_shadow_reg(uint8_t reg_addr, uint8_t reg_hi_val, uint8_t reg_lo_val, uint8_t set_reset){
@@ -203,11 +190,11 @@ void modify_shadow_reg(uint8_t reg_addr, uint8_t reg_hi_val, uint8_t reg_lo_val,
 	shreg_addr = 12 + (2*reg_addr); //12 - Startvalue of reg 0x00 in shadow register
 
 	if(set_reset == SET){
-		shadow_register[shreg_addr]   |= reg_hi_val;
+		shadow_register[shreg_addr] |= reg_hi_val;
 		shadow_register[++shreg_addr] |= reg_lo_val;
 	}
 	else if(set_reset == RESET){
-		shadow_register[shreg_addr]   &= ~reg_hi_val;
+		shadow_register[shreg_addr] &= ~reg_hi_val;
 		shadow_register[++shreg_addr] &= ~reg_lo_val;
 	}
 }
@@ -233,7 +220,6 @@ void read_register(void){
 }
 
 void fm_seek(uint8_t direction){
-	uint8_t dir;
 	if(direction == UP){
 		modify_shadow_reg(POWERCFG, 0x03, 0x00, SET);
 	}
@@ -243,12 +229,12 @@ void fm_seek(uint8_t direction){
 	}
 
 	write_register(POWERCFG);
-	Task_sleep(100);
+	Task_sleep(10);
 
 	do{
 		read_register();
 		/*FIXME  bis doher gehts, dann switcht er wieder auf an anderen channel oasch wenn if unten einkommentiert -> sollte ja eigentlich das komplette Spektrum von 87,5 bis 108 abdecken, hmmm... */
-		/* SF/BL bit set is bad :( */
+		/* SF/BL bit set is bad :( EVTL IN MAIN LOOP ABFANGEN!!! */
 //		if((shadow_register[0] && 0x20) == 1 ){
 //			System_printf("no matching Frequency found\n");
 //			break;
@@ -259,7 +245,7 @@ void fm_seek(uint8_t direction){
 	modify_shadow_reg(POWERCFG, 0x01, 0x00, RESET);
 	write_register(POWERCFG);
 
-	Task_sleep(100);
+	Task_sleep(150);
 
 	frequency = (shadow_register[3]) + LOWER_END_FREQUENCY;
 	fm_tune();
@@ -288,12 +274,13 @@ void fm_tune(){
 	modify_shadow_reg(CHANNEL,0x80,0xFF, RESET);
 	modify_shadow_reg(CHANNEL,0x80, channel, SET);
 	write_register(CHANNEL);
-	Task_sleep(100);
+	Task_sleep(10);
 
-	modify_shadow_reg(CHANNEL,0x80, 0x00, RESET);
+	modify_shadow_reg(CHANNEL,0x80, 0x00, RESET); 
 	write_register(CHANNEL);
-	Task_sleep(100);
+	Task_sleep(150);
 
+//	post_mb(&frequency);
 	post_mb(&frequency);
 
 	read_register();

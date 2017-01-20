@@ -39,7 +39,13 @@
 Mailbox_Params mboxParams;
 Mailbox_Handle mailbox_hendl = NULL;
 
+<<<<<<< HEAD
 void pend_mb(uint16_t* output){
+=======
+/*Post & Pend Abfragen!!! */
+
+int pend_mb(uint16_t* output){
+>>>>>>> d0415662ebf1149ee1c31c91d65c5d08ca60c49d
 	Mailbox_pend(mailbox_hendl, output, BIOS_WAIT_FOREVER);
 }
 
@@ -53,9 +59,15 @@ int setup_mb(){
 
 	Error_init(&eb);
 	Mailbox_Params_init(&mboxParams);
-	mailbox_hendl = Mailbox_create(sizeof(uint16_t), 1, &mboxParams, &eb);
+	//mailbox_hendl = Mailbox_create(sizeof(uint16_t), 1, &mboxParams, &eb);
+	mailbox_hendl = Mailbox_create(sizeof(uint16_t), 2, &mboxParams, &eb);
 	if (mailbox_hendl == NULL) {
-		System_abort("Mailbox create failed\nAborting...");
+		System_abort("Mailbox create failed\n");
 	}
 	return 0;
+}
+
+void make_frequency_comma_again(uint16_t input, uint16_t* precomma, uint8_t* postcomma){
+    *precomma = input/10;
+    *postcomma = input%10;
 }

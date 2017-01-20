@@ -36,23 +36,24 @@
 /* Application headers */
 #include"i2c_task.h"
 #include"register.h"
-#include "hardware.h"
-
+#include"hardware.h"
+#include"mb.h"
+#include"test_task.h"
+#include"UART_Task.h"
 
 int main(void) {
 	uint32_t sysclock = Board_initGeneral(120*1000*1000);
 
-	fm_busmode_selection();
+	init_hardware();
 
 	setup_mb();
 
 	Board_initI2C();
 
-	setup_test_task();
+//	setup_test_task();
+	setup_UART_Task();
 	setup_i2c_task(15, "I2C Task");
-
 	BIOS_start();
-
 
 	return 0;
 }
