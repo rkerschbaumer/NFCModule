@@ -42,8 +42,6 @@
 #define VOLUME_UP 4
 #define VOLUME_DOWN 5
 
-
-
 #define SET   1
 #define RESET 0
 
@@ -53,19 +51,18 @@
 #define HIGHER_END_FREQUENCY 1080
 #define LOWER_END_FREQUENCY 875
 
-I2C_Handle      handle;
-I2C_Params      i2cparams;
-I2C_Transaction i2c;
-uint8_t shadow_register[32];
-uint16_t frequency=LOWER_END_FREQUENCY;
-
+I2C_Handle 		handle;
+I2C_Params		i2cparams;
+I2C_Transaction	i2c;
+uint8_t			shadow_register[32];
+uint16_t 		frequency = LOWER_END_FREQUENCY;
+int8_t	 		volume = 8;
 /* LED-functionpointer */
 void (*led_on[4])() = {led_d1_on, led_d2_on, led_d3_on, led_d4_on};
 void (*led_off[4])() = {led_d1_off, led_d2_off, led_d3_off, led_d4_off};
 
 void i2c_task_fct(UArg arg0, UArg arg1) {
 	uint8_t operating_mode = TUNE_UP;
-	uint8_t i;
 
 	I2C_Params_init(&i2cparams);
 	i2cparams.bitRate = I2C_400kHz;/*in case this is too fast use I2C_400kHz*/
@@ -81,42 +78,7 @@ void i2c_task_fct(UArg arg0, UArg arg1) {
 
 	read_register();
 
-	for(i=0; i<9; i++){
-		modify_shadow_reg(i,0xFF, 0xFF, RESET);
-	}
-
-	/*XOSCTEN set*/
-	modify_shadow_reg(TEST1, 0x81, 0x00, SET);
-	write_register(TEST1);
-	Task_sleep(10);
-
-	/*powerup condition*/
-	modify_shadow_reg(POWERCFG, 0xC0, 0x01, SET);
-	write_register(POWERCFG);
-	Task_sleep(10);
-
-	/* pump up the volume = low-byte-low-nibble 0xF, Spacing = low-byte-high-nibble 0x1
-	 * SEEKTH = high-byte, value between 0x00 and 0x7F, channels below RSSI Threshold will not be validated, 0x2F is a !TESTVALUE! according to AN230 */
-	modify_shadow_reg(SYSCONFIG2, 0x1C, 0x1F, SET);
-	write_register(SYSCONFIG2);
-	Task_sleep(10);
-
-	/* setting SKSNR (SNR Threshold) and SKCNT (FM Impulse Detection Threshold, recommended is 0x48*/
-	modify_shadow_reg(SYSCONFIG3, 0x00, 0x7F, SET);
-	write_register(SYSCONFIG3);
-	Task_sleep(10);
-
-	fm_tune();
-
-	led_on[0]();
-
-	read_register();
-
-	/* RDS TESTCONFIG setting RDSM to verbose */
-	modify_shadow_reg(POWERCFG, 0x08, 0x00, SET);
-	write_register(POWERCFG);
-	Task_sleep(10);
-
+	init_i2c_fm();
 
 	while(true){
 		if(!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_0)){
@@ -125,62 +87,49 @@ void i2c_task_fct(UArg arg0, UArg arg1) {
 				operating_mode = TUNE_UP;
 			}
 			if(operating_mode == TUNE_UP){
-				led_on[0]();
-				led_off[1]();
-				led_off[2]();
-				led_off[3]();
+				set_led_on(TUNE_UP);
 			}
 			else if(operating_mode == TUNE_DOWN){
-				led_off[0]();
-				led_on[1]();
-				led_off[2]();
-				led_off[3]();
+				set_led_on(TUNE_DOWN);
 			}
 			else if(operating_mode == SEEK_UP){
-				led_off[0]();
-				led_off[1]();
-				led_on[2]();
-				led_off[3]();
+				set_led_on(SEEK_UP);
 			}
 			else if(operating_mode == SEEK_DOWN){
-				led_off[0]();
-				led_off[1]();
-				led_off[2]();
-				led_on[3]();
+				set_led_on(SEEK_DOWN);
+			}
+			else if(operating_mode == VOLUME_UP){
+				set_led_on(VOLUME_UP);
+			}
+			else if(operating_mode == VOLUME_DOWN){
+				set_led_on(VOLUME_DOWN);
 			}
 			Task_sleep(150);
 		}
+
 		read_register();
+
 		if(operating_mode == TUNE_UP && (!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_1))){
-			led_on[0]();
-			led_off[1]();
-			led_off[2]();
-			led_off[3]();
 			frequency_change(UP);
 			fm_tune();
 		}
 		else if(operating_mode == TUNE_DOWN && (!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_1))){
-			led_off[0]();
-			led_on[1]();
-			led_off[2]();
-			led_off[3]();
 			frequency_change(DOWN);
 			fm_tune();
 		}
 		else if(operating_mode == SEEK_UP && (!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_1))){
-			led_off[0]();
-			led_off[1]();
-			led_on[2]();
-			led_off[3]();
 			fm_seek(UP);
 		}
 		else if(operating_mode == SEEK_DOWN && (!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_1))){
-			led_off[0]();
-			led_off[1]();
-			led_off[2]();
-			led_on[3]();
 			fm_seek(DOWN);
 		}
+		else if(operating_mode == VOLUME_UP && (!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_1))){
+			change_volume(UP);
+		}
+		else if(operating_mode == VOLUME_DOWN && (!GPIOPinRead(GPIO_PORTJ_BASE, GPIO_PIN_1))){
+			change_volume(DOWN);
+		}
+
 	}
 }
 
@@ -302,5 +251,76 @@ int setup_i2c_task(int prio, xdc_String name){
 		System_abort("Task_create i2c_task failed");
 	}
 	return 0;
+}
+
+void init_i2c_fm(){
+	/*XOSCTEN set*/
+	modify_shadow_reg(TEST1, 0x81, 0x00, SET);
+	write_register(TEST1);
+	Task_sleep(10);
+
+	/*powerup condition*/
+	modify_shadow_reg(POWERCFG, 0xC0, 0x01, SET);
+	write_register(POWERCFG);
+	Task_sleep(10);
+
+	/* pump up the volume = low-byte-low-nibble 0x8, Spacing = low-byte-high-nibble 0x1
+	 * SEEKTH = high-byte, value between 0x00 and 0x7F, channels below RSSI Threshold will not be validated, 0x2F is a !TESTVALUE! according to AN230 */
+	modify_shadow_reg(SYSCONFIG2, 0x1C, 0x18, SET);
+	write_register(SYSCONFIG2);
+	Task_sleep(10);
+
+	/* setting SKSNR (SNR Threshold) and SKCNT (FM Impulse Detection Threshold, recommended is 0x48*/
+	modify_shadow_reg(SYSCONFIG3, 0x00, 0x7F, SET);
+	write_register(SYSCONFIG3);
+	Task_sleep(10);
+
+	fm_tune();
+
+	led_on[0]();
+
+	read_register();
+
+	/* RDS TESTCONFIG setting RDSM to verbose */
+	modify_shadow_reg(POWERCFG, 0x08, 0x00, SET);
+	write_register(POWERCFG);
+	Task_sleep(10);
+}
+
+void change_volume(uint8_t direction){
+	if(volume > 0 && volume < 15){
+		if(direction == UP){
+			volume++;
+		}
+		if(direction == DOWN){
+			volume--;
+		}
+		System_printf("volume %d\n",volume);
+		System_flush();
+		modify_shadow_reg(SYSCONFIG2, 0x00, 0x0F, RESET);
+		modify_shadow_reg(SYSCONFIG2, 0x00, volume, SET);
+		write_register(SYSCONFIG2);
+		Task_sleep(10);
+	}
+}
+
+void set_led_on(uint8_t ledval){
+	uint8_t i;
+	for(i = 0; i < 4; i++){
+		led_off[i]();
+	}
+	if(ledval < 4){
+		led_on[ledval]();
+	}
+	else{
+		if(ledval == 4){
+			led_on[2]();
+			led_on[3]();
+		}
+		else if(ledval == 5){
+			led_on[0]();
+			led_on[1]();
+		}
+	}
 }
 

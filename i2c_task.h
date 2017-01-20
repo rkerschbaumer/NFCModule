@@ -20,8 +20,12 @@ void modify_shadow_reg(uint8_t reg_addr, uint8_t reg_hi_val, uint8_t reg_lo_val,
 void read_register(void);
 void write_register(uint8_t reg_addr);
 
+void init_i2c_fm(void);
 void frequency_change(uint8_t direction);
 void fm_tune(void);
 void fm_seek(uint8_t direction);
+void change_volume(uint8_t direction);
+
+void set_led_on(uint8_t ledval);
 
 #endif /* I2C_TASK_H_ */

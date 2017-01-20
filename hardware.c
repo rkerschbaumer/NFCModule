@@ -36,11 +36,14 @@ void init_hardware(void){
 
 	GPIOPadConfigGet(GPIO_PORTN_BASE, LED1|LED2, &ui32Strength, &ui32PinType);
 	GPIOPadConfigSet(GPIO_PORTN_BASE, LED1|LED2,ui32Strength,GPIO_PIN_TYPE_STD);
+
 	GPIOPadConfigGet(GPIO_PORTF_BASE, LED3|LED4, &ui32Strength, &ui32PinType);
 	GPIOPadConfigSet(GPIO_PORTF_BASE, LED3|LED4,ui32Strength,GPIO_PIN_TYPE_STD);
-    GPIOPadConfigGet(GPIO_PORTJ_BASE, GPIO_PIN_0|GPIO_PIN_1, &ui32_intStr_in, &ui32_intPinType_in);
+
+	GPIOPadConfigGet(GPIO_PORTJ_BASE, GPIO_PIN_0|GPIO_PIN_1, &ui32_intStr_in, &ui32_intPinType_in);
     GPIOPadConfigSet(GPIO_PORTJ_BASE, GPIO_PIN_0|GPIO_PIN_1, ui32_intStr_in, GPIO_PIN_TYPE_STD_WPU);
     GPIODirModeSet(GPIO_PORTJ_BASE, GPIO_PIN_0|GPIO_PIN_1,GPIO_DIR_MODE_IN);
+
     GPIOPadConfigGet(GPIO_PORTC_BASE, GPIO_PIN_7|GPIO_PIN_6, &ui32Strength, &ui32PinType);
     GPIOPadConfigSet(GPIO_PORTC_BASE, GPIO_PIN_7|GPIO_PIN_6,ui32Strength,GPIO_PIN_TYPE_STD);
 
@@ -51,11 +54,8 @@ void init_hardware(void){
     GPIOPadConfigSet(GPIO_PORTD_BASE, GPIO_PIN_1|GPIO_PIN_0,ui32Strength,GPIO_PIN_TYPE_STD);
 
     GPIOPinTypeGPIOOutput(GPIO_PORTC_BASE,GPIO_PIN_7);
-//    GPIOPinTypeGPIOOutput(GPIO_PORTC_BASE,GPIO_PIN_6);
     GPIOPinTypeGPIOOutput(GPIO_PORTH_BASE,GPIO_PIN_2);
     GPIOPinTypeGPIOOutput(GPIO_PORTD_BASE,GPIO_PIN_1|GPIO_PIN_0);
-//    GPIOPinTypeGPIOOutput(GPIO_PORTD_BASE,GPIO_PIN_0);
-
 	GPIOPinTypeGPIOOutput(GPIO_PORTN_BASE,LED1|LED2);
 	GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE,LED3|LED4);
 
@@ -74,7 +74,6 @@ void init_hardware(void){
 
     SysCtlDelay(100000);
 
-	GPIOPinWrite(GPIO_PORTC_BASE, GPIO_PIN_7, 0x80);
     GPIOPinWrite(GPIO_PORTC_BASE, GPIO_PIN_7, 0xFF);
 
     UART_init();

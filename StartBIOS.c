@@ -47,7 +47,7 @@ int main(void) {
 	init_hardware();
 
 	setup_mb();
-
+    Board_initSPI();
 	Board_initI2C();
 
 //	setup_test_task();

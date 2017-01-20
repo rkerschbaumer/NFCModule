@@ -39,18 +39,14 @@
 Mailbox_Params mboxParams;
 Mailbox_Handle mailbox_hendl = NULL;
 
-<<<<<<< HEAD
-void pend_mb(uint16_t* output){
-=======
-/*Post & Pend Abfragen!!! */
-
 int pend_mb(uint16_t* output){
->>>>>>> d0415662ebf1149ee1c31c91d65c5d08ca60c49d
 	Mailbox_pend(mailbox_hendl, output, BIOS_WAIT_FOREVER);
+	return 0;
 }
 
-void post_mb(uint16_t* freq){
+int post_mb(uint16_t* freq){
 	Mailbox_post(mailbox_hendl, freq, BIOS_WAIT_FOREVER);
+	return 0;
 }
 
 int setup_mb(){
