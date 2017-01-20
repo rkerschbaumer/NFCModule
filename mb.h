@@ -12,7 +12,7 @@
 #include <stdint.h>
 
 int setup_mb(void);
-int pend_mb(uint16_t* output);
-int post_mb(uint16_t* frequency);
+void pend_mb(uint16_t* output);
+void post_mb(uint16_t* frequency);
 
 #endif /* MB_H_ */
