@@ -8,6 +8,7 @@
 #ifndef REGISTER_H_
 #define REGISTER_H_
 
+/* Register 0x00 - 0x09 are stored from shadowReg[12] to shadowReg[31] */
 #define DEVICEID 	0x00
 #define CHIPID 		0x01
 #define POWERCFG	0x02
@@ -18,6 +19,7 @@
 #define TEST1		0x07
 #define TEST2		0x08
 #define BOOTCONFIG	0x09
+/*Register 0x0A - 0x0F are stored from shadowReg[0] to shadowReg[11] */
 #define STATUSRSSI	0x0A
 #define READCHAN	0x0B
 #define RDSA		0x0C
@@ -26,6 +28,24 @@
 #define RDSD		0x0F
 
 #define SLAVE_ADDRESS 0x10 //001 0000b
-//#define SLAVE_ADDRESS 0b0010000
+
+//enum operating_modes{
+//TUNE_UP,
+//TUNE_DOWN,
+//SEEK_UP,
+//SEEK_DOWN,
+//VOLUME_UP,
+//VOLUME_DOWN,
+//FAV_SAVE,
+//FAV_SELECT };
+/* Operating Modes*/
+#define TUNE_UP 0
+#define TUNE_DOWN 1
+#define SEEK_UP 2
+#define SEEK_DOWN 3
+#define VOLUME_UP 4
+#define VOLUME_DOWN 5
+#define FAV_SAVE 6
+#define FAV_SELECT 7
 
 #endif /* REGISTER_H_ */
