@@ -11,11 +11,12 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+enum mb_type{ frq, vol, mode };
+
 int setup_mb(void);
-
-int pend_mb(uint16_t* output);
-int post_mb(uint16_t* freq);
-
+void pend_mb(uint16_t* output, enum mb_type x);
+//void post_mb(uint16_t* value, enum mb_type x);
+void post_mb(uint16_t value, enum mb_type x);
 void make_frequency_comma_again(uint16_t input, uint16_t* precomma, uint8_t* postcomma);
 
 

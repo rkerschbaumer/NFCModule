@@ -29,4 +29,23 @@
 
 #define SLAVE_ADDRESS 0x10 //001 0000b
 
+//enum operating_modes{
+//TUNE_UP,
+//TUNE_DOWN,
+//SEEK_UP,
+//SEEK_DOWN,
+//VOLUME_UP,
+//VOLUME_DOWN,
+//FAV_SAVE,
+//FAV_SELECT };
+/* Operating Modes*/
+#define TUNE_UP 0
+#define TUNE_DOWN 1
+#define SEEK_UP 2
+#define SEEK_DOWN 3
+#define VOLUME_UP 4
+#define VOLUME_DOWN 5
+#define FAV_SAVE 6
+#define FAV_SELECT 7
+
 #endif /* REGISTER_H_ */

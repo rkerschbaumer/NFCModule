@@ -36,7 +36,7 @@ void test_function(UArg arg0, UArg arg1){
 	uint16_t outfreq=0, precomma;
 	uint8_t postcomma;
 	while(1){
-		pend_mb(&outfreq);
+		pend_mb(&outfreq, frq);
 		make_frequency_comma_again(outfreq, &precomma, &postcomma);
 	}
 }

@@ -36,29 +36,46 @@
 
 #include"mb.h"
 
-Mailbox_Params mboxParams;
-Mailbox_Handle mailbox_hendl = NULL;
+Mailbox_Params mb_params_frq, mb_params_vol, mb_params_mode;
+Mailbox_Handle mailbox_frq_hendl = NULL, mailbox_vol_hendl = NULL, mailbox_mode_hendl = NULL;
 
-int pend_mb(uint16_t* output){
-	Mailbox_pend(mailbox_hendl, output, BIOS_WAIT_FOREVER);
-	return 0;
+void pend_mb(uint16_t* output, enum mb_type x){
+	if(x == frq) Mailbox_pend(mailbox_frq_hendl, output, BIOS_WAIT_FOREVER);
+	if(x == vol) Mailbox_pend(mailbox_vol_hendl, output, BIOS_WAIT_FOREVER);
+	if(x == mode){
+		Mailbox_pend(mailbox_mode_hendl, output, BIOS_WAIT_FOREVER);
+	}
 }
 
-int post_mb(uint16_t* freq){
-	Mailbox_post(mailbox_hendl, freq, BIOS_WAIT_FOREVER);
-	return 0;
+//void post_mb(uint16_t* value, enum mb_type x){
+//	if(x == frq) Mailbox_post(mailbox_frq_hendl, value, BIOS_WAIT_FOREVER);
+//	if(x == vol) Mailbox_post(mailbox_vol_hendl, value, BIOS_WAIT_FOREVER);
+//	if(x == mode) Mailbox_post(mailbox_mode_hendl, value, BIOS_WAIT_FOREVER);
+//}
+void post_mb(uint16_t value, enum mb_type x){
+	if(x == frq) Mailbox_post(mailbox_frq_hendl, &value, BIOS_WAIT_FOREVER);
+	if(x == vol) Mailbox_post(mailbox_vol_hendl, &value, BIOS_WAIT_FOREVER);
+	if(x == mode) Mailbox_post(mailbox_mode_hendl, &value, BIOS_WAIT_FOREVER);
 }
 
 int setup_mb(){
-
 	Error_Block eb;
 
 	Error_init(&eb);
-	Mailbox_Params_init(&mboxParams);
-	//mailbox_hendl = Mailbox_create(sizeof(uint16_t), 1, &mboxParams, &eb);
-	mailbox_hendl = Mailbox_create(sizeof(uint16_t), 2, &mboxParams, &eb);
-	if (mailbox_hendl == NULL) {
-		System_abort("Mailbox create failed\n");
+	Mailbox_Params_init(&mb_params_frq);
+	Mailbox_Params_init(&mb_params_vol);
+	Mailbox_Params_init(&mb_params_mode);
+	mailbox_frq_hendl = Mailbox_create(sizeof(uint16_t), 1, &mb_params_frq, &eb);
+	mailbox_vol_hendl = Mailbox_create(sizeof(uint8_t), 1, &mb_params_vol, &eb);
+	mailbox_mode_hendl = Mailbox_create(sizeof(uint8_t), 1, &mb_params_mode, &eb);
+	if (mailbox_frq_hendl == NULL) {
+		System_abort("Mailbox frq create failed\n");
+	}
+	if (mailbox_vol_hendl == NULL) {
+		System_abort("Mailbox volume create failed\n");
+	}
+	if (mailbox_mode_hendl == NULL) {
+		System_abort("Mailbox mode create failed\n");
 	}
 	return 0;
 }

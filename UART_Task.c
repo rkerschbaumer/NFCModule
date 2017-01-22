@@ -56,7 +56,7 @@ void frequency_to_string(uint16_t precomma, uint8_t postcomma, char* buffer){
     buffer[++i] = '\0';
 }
 
-void UARTFxn(UArg arg0, UArg arg1){
+void UARTFxn(){
     UART_Handle uart;
     UART_Params uartParams;
     uint16_t outfreq=0, precomma;
@@ -78,7 +78,7 @@ void UARTFxn(UArg arg0, UArg arg1){
 
     /* Echo Loopoopoopoop */
     while (1) {
-        pend_mb(&outfreq);
+        pend_mb(&outfreq, frq);
    		make_frequency_comma_again(outfreq, &precomma, &postcomma);
 
    		frequency_to_string(precomma, postcomma, outstring);
@@ -91,9 +91,6 @@ void UARTFxn(UArg arg0, UArg arg1){
     }
 }
 
-/*
- *  Setup task function
- */
 int setup_UART_Task(void){
     Task_Params taskUARTParams;
     Task_Handle taskUART;

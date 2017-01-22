@@ -18,13 +18,8 @@
 
 /*! \fn UARTFxn
  *  \brief Execute UART Task
- *
- *
- *   \param arg0 void
- *   \param arg1 void
- *
  */
-void UARTFxn(UArg arg0, UArg arg1);
+void UARTFxn(void);
 
 /*! \fn setup_UART_Task
  *  \brief Setup UART task
