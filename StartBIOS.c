@@ -35,34 +35,20 @@
 
 
 /* Application headers */
-#include"i2c_task.h"
-#include"reg.h"
-#include"hardware.h"
-#include"mb.h"
-#include"test_task.h"
-#include"oled_c.h"
-#include"oled_task.h"
-#include"UART_Task.h"
+#include"inc/hardware.h"
+#include"inc/leds.h"
 
 int main(void) {
 	uint32_t ui32SysClock = Board_initGeneral(120*1000*1000);
 
-	init_hardware();
+	init_nfc();
+	Board_initSPI();
 
-    Board_initSPI();
-	Board_initI2C();
-
+	// FIXME: SSI Base 0 is nur a test, evtl 1 oder so
 	SSIClockSourceSet(SSI3_BASE, SSI_CLOCK_SYSTEM);
-	SSIConfigSetExpClk(SSI3_BASE, ui32SysClock, SSI_FRF_MOTO_MODE_0, SSI_MODE_MASTER, 60 * 1000 * 1000, 16);
+	SSIConfigSetExpClk(SSI3_BASE, ui32SysClock, SSI_FRF_MOTO_MODE_0, SSI_MODE_MASTER, 60 * 1000 * 1000, 8);
 	SSIEnable(SSI3_BASE);
 
-	setup_mb();
-//	setup_test_task();
-//	setup_UART_Task();
-	setup_oled_task(frq, 14, "Frq-Update OLED Task");
-	setup_oled_task(vol, 14, "Vol-Update OLED Task");
-	setup_oled_task(mode, 14, "Mode-Update OLED Task");
-	setup_i2c_task(14, "I2C Task");
 	BIOS_start();
 
 	return 0;
