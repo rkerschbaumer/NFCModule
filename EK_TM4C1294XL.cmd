@@ -1,7 +1,7 @@
 /******************************************************************************
  *
  * Default Linker Command file for the Texas Instruments TM4C1294NCPDT
- *
+ 
  * This is derived from revision 11167 of the TivaWare Library.
  *
  *****************************************************************************/
