@@ -45,12 +45,15 @@
 //#include "uart.h"
 #include <stdint.h>
 #include <stdbool.h>
+#include <xdc/runtime/System.h>
 #include "nfcspi.h"
 
 //===============================================================
 
 #define ENABLE_STANDALONE			// Disables all LED features to allow for easier porting
 
+#define STATUS_FAIL		0x00
+#define STATUS_SUCCESS	0x01
 //===============================================================
 //
 // This defines the version of the TRF79xxA chip being used (Use Decimal, not Hex for the numbers)
@@ -76,11 +79,8 @@
 // TRF7970A and TRF7964A - 127 bytes
 // TRF7960A, TRF7961A, TRF7962A, and TRF7963A - 12 bytes
 //
-#if (TRF79xxA_VERSION == 70)
 #define TRF79xxA_MAX_FIFO_SIZE 			127
-#elif (TRF79xxA_VERSION == 60)
-#define TRF79xxA_MAX_FIFO_SIZE 			12
-#endif
+
 
 //
 // This defines the size of the FIFO buffer generated. This size comes out of RAM memory.
@@ -252,36 +252,25 @@ typedef enum
 
 //===============================================================
 
-extern void TRF79xxA_disableSlotCounter(void);
-extern void TRF79xxA_enableSlotCounter(void);
-extern void TRF79xxA_initialSettings(void);
-extern void TRF79xxA_writeRaw(uint8_t * pui8Payload, uint8_t ui8Length);
-extern void TRF79xxA_readContinuous(uint8_t * pui8Payload, uint8_t ui8Length);
-extern uint8_t TRF79xxA_readRegister(uint8_t ui8TrfRegister);
-extern void TRF79xxA_reset(void);
-extern void TRF79xxA_resetFIFO(void);
-extern void TRF79xxA_resetIrqStatus(void);
-extern void TRF79xxA_sendDirectCommand(uint8_t ui8Value);
-extern void TRF79xxA_setupInitiator(uint8_t ui8IsoControl);
-extern void TRF79xxA_turnRfOff(void);
-extern void TRF79xxA_turnRfOn(void);
-extern void TRF79xxA_writeContinuous(uint8_t * pui8Payload, uint8_t ui8Length);
-extern void TRF79xxA_writeRegister(uint8_t ui8TrfRegister, uint8_t ui8Value);
-
-extern void TRF79xxA_waitTxIRQ(uint8_t ui8TxTimeout);
-extern void TRF79xxA_waitRxIRQ(uint8_t ui8RxTimeout);
-extern tTrfStatus TRF79xxA_waitRxData(uint8_t ui8TxTimeout, uint8_t ui8RxTimeout);
-
-extern tTrfStatus TRF79xxA_getTrfStatus(void);
-extern uint8_t TRF79xxA_getCollisionPosition(void);
-extern void TRF79xxA_setCollisionPosition(uint8_t ui8ColPos);
-
-extern void TRF79xxA_setTrfStatus(tTrfStatus sTrfStatus);
-extern void TRF79xxA_setTrfPowerSetting(tTrfPowerOptions sTrfPowerSetting);
-extern uint8_t TRF79xxA_getRxBytesReceived(void);
-extern uint8_t * TRF79xxA_getTrfBuffer(void);
-extern uint8_t TRF79xxA_getIsoControlValue(void);
-extern bool TRF79xxA_checkExternalRfField(void);
+void TRF79xxA_sendDirectCommand(uint8_t ui8Value);
+void TRF79xxA_resetFIFO(void);
+void TRF79xxA_initialSettings(void);
+void TRF79xxA_writeRegister(uint8_t ui8TrfRegister, uint8_t ui8Value);
+void TRF79xxA_setTrfPowerSetting(tTrfPowerOptions sTrfPowerSetting);
+void TRF79xxA_reset(void);
+void TRF79xxA_setupInitiator(uint8_t ui8IsoControl);
+bool TRF79xxA_checkExternalRfField(void);
+void TRF79xxA_turnRfOff(void);
+uint8_t TRF79xxA_readRegister(uint8_t ui8TrfRegister);
+void TRF79xxA_turnRfOn(void);
+uint8_t TRF79xxA_getCollisionPosition(void);
+uint8_t TRF79xxA_getIsoControlValue(void);
+uint8_t TRF79xxA_getRxBytesReceived(void);
+void TRF79xxA_setTrfStatus(tTrfStatus sTrfStatus);
+tTrfStatus TRF79xxA_waitRxData(uint8_t ui8TxTimeout, uint8_t ui8RxTimeout);
+void TRF79xxA_writeRaw(uint8_t * pui8Payload, uint8_t ui8Length);
+void TRF79xxA_waitRxIRQ(uint8_t ui8RxTimeout);
+void TRF79xxA_waitTxIRQ(uint8_t ui8TxTimeout);
 
 //===============================================================
 

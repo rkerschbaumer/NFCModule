@@ -6,10 +6,7 @@
  */
 
 #include "nfcspi.h"
-#include <driverlib/gpio.h>
-#include <driverlib/pin_map.h>/*supplies GPIO_PIN_x*/
-#include <inc/hw_memmap.h>/*supplies GPIO_PORTx_BASE*/
-#include <driverlib/ssi.h>
+
 
 //===============================================================
 // NAME: void SPI_directCommand (uint8_t ui8command)
@@ -32,9 +29,9 @@
 // 14May2017	RK	mapped for Tiva TM4C1294 Board
 //===============================================================
 
-void
-SPI_directCommand(uint8_t ui8Command) {
-	GPIOPinWrite(GPIO_PORTN_BASE, GPIO_PIN_5, 0x00); // Start SPI Mode
+void SPI_directCommand(uint8_t ui8Command) {
+	GPIOPinWrite(GPIO_PORTN_BASE, GPIO_PIN_5, 0x00); // Start SPI Mode - BP2
+	//GPIOPinWrite(GPIO_PORTB_BASE, GPIO_PIN_2, 0x00); // Start SPI Mode - BP1
 
 	// set Address/Command Word Bit Distribution to command
 	ui8Command = (0x80 | ui8Command);					// command
@@ -42,12 +39,8 @@ SPI_directCommand(uint8_t ui8Command) {
 
 	SPI_sendByte(ui8Command);
 
-	/*
-#if (TRF79xxA_VERSION == 60)
-	SPI_sendByte(0x00);					// Dummy TX Write for Direct Commands per TRF796xA SPI Design Tips (sloa140)
-#endif
-	 */
-	GPIOPinWrite(GPIO_PORTN_BASE, GPIO_PIN_5, 0xFF); //Stop SPI Mode
+	GPIOPinWrite(GPIO_PORTN_BASE, GPIO_PIN_5, 0xFF); //Stop SPI Mode - BP2
+	//GPIOPinWrite(GPIO_PORTB_BASE, GPIO_PIN_2, 0xFF); //Stop SPI Mode - BP1
 }
 
 
@@ -56,8 +49,8 @@ SPI_directCommand(uint8_t ui8Command) {
 //===============================================================
 
 void SPI_sendByte(uint8_t ui8TxByte) {
-	SSIDataPut(SSI0_BASE, ui8TxByte);
-	while(SSIBusy(SSI0_BASE));
+	SSIDataPut(SSI3_BASE, ui8TxByte);
+	while(SSIBusy(SSI3_BASE));
 
 	/*
 	UCB0TXBUF = ui8TxByte;
@@ -87,17 +80,22 @@ void SPI_sendByte(uint8_t ui8TxByte) {
 //===============================================================
 
 void SPI_writeSingle(uint8_t * pui8Buffer) {
-	GPIOPinWrite(GPIO_PORTN_BASE, GPIO_PIN_5, 0x00); // Start SPI Mode
+	GPIOPinWrite(GPIO_PORTN_BASE, GPIO_PIN_5, 0x00); // Start SPI Mode - BP2
+	//GPIOPinWrite(GPIO_PORTB_BASE, GPIO_PIN_2, 0x00); //Start SPI Mode - BP1
 
 	// Address/Command Word Bit Distribution
 	// address, write, single (fist 3 bits = 0)
-	*pui8Buffer = (0x1f & *pui8Buffer);				// register address
+	pui8Buffer[0] = (0x1f & pui8Buffer[0]);				// register address
 
 
-	SPI_sendByte(*pui8Buffer++);
-	SPI_sendByte(*pui8Buffer++);
+	//SPI_sendByte(*pui8Buffer++);
+	//SPI_sendByte(*pui8Buffer++);
+	SPI_sendByte(pui8Buffer[0]);
+	SPI_sendByte(pui8Buffer[1]);
 
-	GPIOPinWrite(GPIO_PORTN_BASE, GPIO_PIN_5, 0xFF); //Stop SPI Mode
+	GPIOPinWrite(GPIO_PORTN_BASE, GPIO_PIN_5, 0xFF); //Stop SPI Mode - BP2
+	//GPIOPinWrite(GPIO_PORTB_BASE, GPIO_PIN_2, 0xFF); //Stop SPI Mode - BP1
+
 }
 
 //===============================================================
@@ -106,7 +104,8 @@ void SPI_writeSingle(uint8_t * pui8Buffer) {
 //===============================================================
 
 void SPI_setup(void) {
-	GPIOPinWrite(GPIO_PORTN_BASE, GPIO_PIN_4, 0xFF);  //TRF Enable set
+	//GPIOPinWrite(GPIO_PORTN_BASE, GPIO_PIN_4, 0xFF);  //TRF Enable set - BP2
+	GPIOPinWrite(GPIO_PORTB_BASE, GPIO_PIN_3, 0xFF);  //TRF Enable set - BP1
 
 	//FIXME - should probably be done... don't know what is needed here
 	/*
@@ -117,7 +116,7 @@ void SPI_setup(void) {
 	//SPI_usciSet();								// Set the USART
 
 	//LED_ALL_OFF Allready done in hardware.c
-	//FIXME - LED_PORT_SET -> what is that function doing?
+	//FIXME - LED_PORT_SET -> what is that  doing?
 	/*
 	LED_ALL_OFF;
 	LED_PORT_SET;
@@ -140,8 +139,8 @@ void SPI_setup(void) {
 // 24Nov2010	RP	Original Code
 // 07Dec2010	RP	reduced SPI clock frequency
 //===============================================================
-/*
-void SPI_usciSet(void) {
+//FIXME bigtime - wos geht do mit den UCsdaflokjwetroij dingern ab?
+/*void SPI_usciSet(void) {
 	//Uses USCI_B0
 	UCB0CTL1 |= UCSWRST;						// Enable SW reset
 	UCB0CTL0 |= UCMSB + UCMST + UCSYNC;			// 3-pin, 8-bit SPI master
@@ -162,3 +161,102 @@ void SPI_usciSet(void) {
 
 	UCB0CTL1 &= ~UCSWRST;						// **Initialize USCI state machine**
 }*/
+
+//===============================================================
+// NAME: void SPI_readSingle (uint8_t *pui8Buffer)
+//
+// BRIEF: Is used in SPI mode to read specified reader chip
+// registers.
+//
+// INPUTS:
+//	Parameters:
+//		uint8_t		*pui8Buffer		addresses of the registers
+//
+// OUTPUTS:
+//
+// PROCESS:	[1] read registers
+//			[2] write contents to *pui8Buffer
+//
+//===============================================================
+
+void SPI_readSingle(uint8_t * pui8Buffer) {
+	GPIOPinWrite(GPIO_PORTN_BASE, GPIO_PIN_5, 0x00); // Start SPI Mode - BP2
+	//GPIOPinWrite(GPIO_PORTB_BASE, GPIO_PIN_2, 0x00); //Start SPI Mode - BP1
+
+	// Address/Command Word Bit Distribution
+	*pui8Buffer = (0x40 | *pui8Buffer); 			// address, read, single
+	*pui8Buffer = (0x5f & *pui8Buffer);				// register address
+	//SPI_sendByte(*pui8Buffer);					// Previous data to TX, RX
+	//*(pui8Buffer+1) = SPI_receiveByte();
+	SPI_sendByte(pui8Buffer[0]);
+	pui8Buffer[1]=SPI_receiveByte();
+
+	GPIOPinWrite(GPIO_PORTN_BASE, GPIO_PIN_5, 0xFF); //Stop SPI Mode - BP2
+	//GPIOPinWrite(GPIO_PORTB_BASE, GPIO_PIN_2, 0xFF); //Stop SPI Mode - BP1
+}
+
+
+//===============================================================
+// NAME: uint8_t SPI_receiveByte(void)
+//===============================================================
+
+uint32_t SPI_receiveByte(void) {
+	/* is no longer a single byte... but without uint32 - SSIDataGet isn't working*/
+	uint32_t retval;
+
+	SSIDataGet(SSI3_BASE, &retval);
+	while(SSIBusy(SSI3_BASE));
+
+	System_printf("retval SPI_recByte()=%d\n",retval);
+	System_flush();
+
+	return retval;
+
+	/*UCB0TXBUF = 0x00;
+
+	while (UCB0STAT & UCBUSY);
+
+	return UCB0RXBUF;
+	*/
+}
+
+//===============================================================
+// NAME: void SPI_rawWrite (uint8_t *pui8Buffer, uint8_t length)
+//
+// BRIEF: Is used in SPI mode to write direct to the reader chip.
+//
+// INPUTS:
+//	Parameters:
+//		uint8_t		*pui8Buffer		raw data
+//		uint8_t		length		number of data bytes
+//
+// OUTPUTS:
+//
+// PROCESS:	[1] send raw data to reader chip
+//
+//===============================================================
+
+void SPI_rawWrite(uint8_t * pui8Buffer, uint8_t ui8Length, bool bContinuedSend) {
+	GPIOPinWrite(GPIO_PORTN_BASE, GPIO_PIN_5, 0x00); // Start SPI Mode - BP2
+	//GPIOPinWrite(GPIO_PORTB_BASE, GPIO_PIN_2, 0x00); //Start SPI Mode - BP1
+
+	if (bContinuedSend){
+		SPI_sendByte(0x3F);
+	}
+
+	while(ui8Length-- > 0){
+		// Check if USCI_B0 TX buffer is ready
+/*		FIXME bigtime - wos geht do mit den UCsdaflokjwetroij dingern ab?
+ * 		while (!(IFG2 & UCB0TXIFG));
+
+		// Transmit data
+		UCB0TXBUF = *pui8Buffer;
+
+		while(UCB0STAT & UCBUSY);	// Wait while SPI state machine is busy
+*/
+		pui8Buffer++;
+	}
+
+	GPIOPinWrite(GPIO_PORTN_BASE, GPIO_PIN_5, 0xFF); //Stop SPI Mode - BP2
+	//GPIOPinWrite(GPIO_PORTB_BASE, GPIO_PIN_2, 0xFF); //Stop SPI Mode - BP1
+}

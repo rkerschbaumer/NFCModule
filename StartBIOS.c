@@ -37,17 +37,19 @@
 /* Application headers */
 #include"inc/hardware.h"
 #include"inc/leds.h"
+#include"inc/nfc_spi_task.h"
 
 int main(void) {
 	uint32_t ui32SysClock = Board_initGeneral(120*1000*1000);
 
-	init_nfc();
+	init_nfc_hw();
 	Board_initSPI();
 
-	// FIXME: SSI Base 0 is nur a test, evtl 1 oder so
 	SSIClockSourceSet(SSI3_BASE, SSI_CLOCK_SYSTEM);
-	SSIConfigSetExpClk(SSI3_BASE, ui32SysClock, SSI_FRF_MOTO_MODE_0, SSI_MODE_MASTER, 60 * 1000 * 1000, 8);
+	SSIConfigSetExpClk(SSI3_BASE, ui32SysClock, SSI_FRF_MOTO_MODE_1, SSI_MODE_MASTER, 2 * 1000 * 1000, 8);
 	SSIEnable(SSI3_BASE);
+
+	setup_nfc_spi_task(13, "NFC Task");
 
 	BIOS_start();
 

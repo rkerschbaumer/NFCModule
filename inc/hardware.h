@@ -23,6 +23,6 @@
 #define BIT6 0b01000000
 #define BIT7 0b10000000
 
-void init_nfc(void);
+void init_nfc_hw(void);
 
 #endif /* INC_HARDWARE_H_ */
