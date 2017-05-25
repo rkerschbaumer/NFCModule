@@ -204,11 +204,11 @@ uint32_t SPI_receiveByte(void) {
 	/* is no longer a single byte... but without uint32 - SSIDataGet isn't working*/
 	uint32_t retval;
 
-	SSIDataGet(SSI3_BASE, &retval);
+	SSIDataPut(SSI3_BASE, 0);
 	while(SSIBusy(SSI3_BASE));
 
-	System_printf("retval SPI_recByte()=%d\n",retval);
-	System_flush();
+	SSIDataGet(SSI3_BASE, &retval);
+	while(SSIBusy(SSI3_BASE));
 
 	return retval;
 
